@@ -12,7 +12,7 @@ if st.button("Convert Now"):
         try:
             # Gradio API call using the official 'predict' endpoint
             # Gradio ke naye version ke liye direct URL
-url = f"{colab_url.strip('/')}/"
+             url = f"{colab_url.strip('/')}/"
             
             # File ko byte stream mein bhejte hain
             files = {'data': uploaded_file.getvalue()}
