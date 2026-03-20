@@ -1,85 +1,47 @@
 import streamlit as st
 import requests
+import base64
 
-# 1. Website ki Look aur Theme (Parrot Green & White)
-st.set_page_config(page_title="Free Voice Clone", page_icon="🦜", layout="centered")
+# Website Title & Style
+st.set_page_config(page_title="Free Voice Clone", page_icon="🦜")
+st.markdown("<h1 style='text-align: center; color: #52D017;'>🦜 Free Voice Clone</h1>", unsafe_allow_html=True)
 
-st.markdown("""
-    <style>
-    /* Background and Text Colors */
-    .stApp { background-color: #FFFFFF; }
-    h1 { color: #52D017 !important; text-align: center; font-family: 'Arial'; font-weight: 800; }
-    p { color: #2C3E50; text-align: center; font-size: 18px; }
-    
-    /* Input Box Styling */
-    .stFileUploader section { border: 2px dashed #7CFC00 !important; border-radius: 20px; }
-    
-    /* Button Styling */
-    div.stButton > button {
-        background-color: #7CFC00;
-        color: black;
-        border: 2px solid #52D017;
-        border-radius: 25px;
-        height: 3.5em;
-        width: 100%;
-        font-weight: bold;
-        font-size: 20px;
-        transition: 0.3s;
-    }
-    div.stButton > button:hover {
-        background-color: #52D017;
-        color: white;
-        border: 2px solid #7CFC00;
-        transform: scale(1.02);
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-# 2. Header Section
-st.markdown("<h1>🦜 Free Voice Clone</h1>", unsafe_allow_html=True)
-st.markdown("<p>Clone any song into your favorite actor's voice instantly!</p>", unsafe_allow_html=True)
-
-# 3. API Connection (Google Colab Link)
-st.sidebar.header("⚙️ Settings")
+# Sidebar for Colab Link
 colab_url = st.sidebar.text_input("Enter Google Colab API Link", placeholder="https://xxxx.gradio.live")
-st.sidebar.info("Pehle Google Colab on karein, phir uska link yahan paste karein.")
+st.sidebar.info("Colab on karein aur uska link yahan dalein.")
 
-# 4. Main Features Area
-st.subheader("Step 1: Upload your Song")
-uploaded_file = st.file_uploader("Choose an MP3 or WAV file", type=['mp3', 'wav'])
+# Main UI
+uploaded_file = st.file_uploader("Upload Song (MP3/WAV)", type=['mp3', 'wav'])
+actor = st.selectbox("Select Actor", ["Babar Azam", "Narendra Modi", "Cristiano Ronaldo"])
 
-st.subheader("Step 2: Select Actor Voice")
-actors = ["Babar Azam", "Narendra Modi", "Cristiano Ronaldo", "Upload My Own Model"]
-selected_actor = st.selectbox("Choose who should sing:", actors)
-
-if selected_actor == "Upload My Own Model":
-    custom_model = st.file_uploader("Upload .pth file", type=['pth'])
-
-# 5. Conversion Logic
 if st.button("Start Magic Conversion 🚀"):
-    if not uploaded_file:
-        st.error("❌ Please upload a song first!")
-    elif not colab_url:
-        st.error("❌ Please provide the Google Colab Link from the sidebar!")
+    if uploaded_file and colab_url:
+        st.info("AI Processing... Please wait 1-2 minutes.")
+        
+        # Audio ko base64 mein convert karna taake error na aaye
+        file_bytes = uploaded_file.read()
+        encoded_audio = base64.b64encode(file_bytes).decode()
+        
+        # Gradio API Payload
+        payload = {
+            "data": [
+                {"name": "audio.mp3", "data": f"data:audio/mpeg;base64,{encoded_audio}"},
+                actor
+            ]
+        }
+        
+        try:
+            # Colab se raabta
+            response = requests.post(f"{colab_url}/api/predict", json=payload, timeout=600)
+            if response.status_code == 200:
+                # Output file ka link nikalna
+                result = response.json()['data'][0]
+                audio_url = f"{colab_url}/file={result['name']}"
+                st.audio(audio_url)
+                st.success("✅ Conversion Done!")
+            else:
+                st.error("⚠️ Colab side error. Check your Colab script.")
+        except Exception as e:
+            st.error(f"❌ Connection Failed: {e}")
     else:
-        with st.spinner("⏳ Processing... (Vocal Separation + Voice Cloning)"):
-            try:
-                # Sending file to your Google Colab Backend
-                files = {"file": uploaded_file.getvalue()}
-                data = {"actor": selected_actor}
-                
-                # Note: Colab must be running a FastAPI or Gradio server to receive this
-                response = requests.post(f"{colab_url}/process", files=files, data=data, timeout=300)
-                
-                if response.status_code == 200:
-                    st.success("✅ Conversion Complete!")
-                    st.audio(response.content)
-                    st.download_button("Download Song", data=response.content, file_name="cloned_song.mp3")
-                else:
-                    st.error("⚠️ Colab is not responding correctly. Check your Colab script.")
-            except Exception as e:
-                st.error(f"❌ Connection Error: Make sure your Colab link is active.")
-
-# 6. Footer
-st.markdown("---")
-st.caption("Developed for Mobile | 100% Free | No Login Required")
+        st.error("Please upload file and enter Colab link!")
