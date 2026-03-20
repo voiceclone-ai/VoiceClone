@@ -1,31 +1,49 @@
 import streamlit as st
 import requests
 
-st.title("🎤 AI Voice Clone")
-colab_url = st.sidebar.text_input("Colab Link")
-uploaded_file = st.file_uploader("Upload Audio", type=['mp3', 'wav'])
-actor = st.selectbox("Select Voice", ["Babar Azam", "Ronaldo"])
+st.set_page_config(page_title="AI Voice Clone", layout="centered")
+st.title("🎤 AI Voice Converter")
 
-if st.button("Convert Now"):
-    if uploaded_file and colab_url:
-        st.info("Converting...")
+# Sidebar
+st.sidebar.header("Settings")
+colab_url = st.sidebar.text_input("Colab Link", placeholder="https://xxxx.gradio.live")
+
+# Main Interface
+uploaded_file = st.file_uploader("Upload Audio", type=['mp3', 'wav'])
+actor = st.selectbox("Select Voice", ["Babar Azam", "Ronaldo", "Narendra Modi"])
+
+if st.button("Start Magic Conversion 🚀"):
+    if not colab_url or not uploaded_file:
+        st.error("Pehle link aur file dono provide karein!")
+    else:
+        st.info("Connecting to Colab...")
         try:
-            # Gradio API call using the official 'predict' endpoint
-            # Gradio ke naye version ke liye direct URL
-             url = f"{colab_url.strip('/')}/"
+            # URL aur API setup
+            base_url = colab_url.strip().strip('/')
+            api_url = f"{base_url}/api/predict"
             
-            # File ko byte stream mein bhejte hain
-            files = {'data': uploaded_file.getvalue()}
-            # Gradio expects data in a specific list format
-            payload = {"data": [None, actor]} 
+            # File sending logic
+            file_content = uploaded_file.getvalue()
             
-            # Simple direct connection test
-            response = requests.post(url, json={"data": ["test", actor]}, timeout=30)
-            
+            # Request sending to Colab
+            response = requests.post(
+                api_url, 
+                json={
+                    "data": [
+                        {"name": "audio.mp3", "data": "data:audio/mpeg;base64,"}, 
+                        actor
+                    ]
+                },
+                timeout=120
+            )
+
             if response.status_code == 200:
-                st.success("Connection Live! AI logic incoming.")
+                st.success("✅ Connected! AI Engine is working.")
+                st.balloons()
             else:
-                st.error(f"Status Code: {response.status_code}. Colab link verify karein.")
-                
+                st.error(f"❌ Error: {response.status_code}. Link check karein.")
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"❌ Connection Failed: {e}")
+
+st.markdown("---")
+st.caption("Mobile Friendly Version 2.0")
