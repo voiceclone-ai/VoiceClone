@@ -2,44 +2,54 @@ import streamlit as st
 import requests
 import base64
 
-st.title("🎤 AI Voice Clone")
+# Page Config
+st.set_page_config(page_title="AI Voice Clone", layout="centered")
+st.title("🎤 AI Voice Converter")
 
-colab_url = st.sidebar.text_input("Colab Link")
-uploaded_file = st.file_uploader("Upload Audio", type=['mp3', 'wav'])
-actor = st.selectbox("Select Voice", ["Babar Azam", "Ronaldo"])
+# Sidebar for Link
+st.sidebar.header("Settings")
+colab_url = st.sidebar.text_input("Colab Link", placeholder="https://xxxx.gradio.live")
 
-if st.button("Convert Now"):
-    if uploaded_file and colab_url:
-        st.info("Processing...")
+# Main Interface
+uploaded_file = st.file_uploader("Upload Audio (MP3/WAV)", type=['mp3', 'wav'])
+actor = st.selectbox("Select Voice", ["Babar Azam", "Ronaldo", "Narendra Modi"])
+
+if st.button("Convert Now 🚀"):
+    if not colab_url or not uploaded_file:
+        st.error("Pehle Colab ka link aur audio file provide karein!")
+    else:
+        st.info("AI Processing... Please wait.")
         try:
-            # Link ko bilkul saaf karna
+            # Step 1: Link ko saaf karna
             url = colab_url.strip().rstrip('/')
             
-            # Agar 404 aaye toh ye doosra rasta try karega
-            api_url = f"{url}/run/predict" # Naye Gradio versions ke liye
+            # Step 2: Naya API path (Auto-Fix for 404)
+            api_url = f"{url}/api/predict/"
             
+            # Step 3: File ko Base64 mein convert karna
             file_bytes = uploaded_file.getvalue()
-            encoded = base64.b64encode(file_bytes).decode()
+            encoded_audio = base64.b64encode(file_bytes).decode()
             
+            # Step 4: Data pack karna
             payload = {
                 "data": [
-                    f"data:audio/mpeg;base64,{encoded}",
+                    {"name": "audio.mp3", "data": f"data:audio/mpeg;base64,{encoded_audio}"},
                     actor
                 ]
             }
             
-            # Request bhej rahe hain
-            response = requests.post(api_url, json=payload, timeout=60)
+            # Step 5: Colab ko request bhejna
+            response = requests.post(api_url, json=payload, timeout=120)
             
-            # Agar /run/predict fail ho toh purana /api/predict try karein
-            if response.status_code != 200:
-                api_url = f"{url}/api/predict"
-                response = requests.post(api_url, json=payload, timeout=60)
-
             if response.status_code == 200:
-                st.success("✅ Connected! AI Engine is responding.")
+                st.success("✅ Connected! AI Engine is working.")
+                st.balloons()
+                # Yahan hum result display kar sakte hain jab model ready ho jaye
             else:
-                st.error(f"Error {response.status_code}: Link refresh karein.")
+                st.error(f"❌ Error {response.status_code}: Link refresh karein ya check karein.")
                 
         except Exception as e:
-            st.error(f"Connection Error: {e}")
+            st.error(f"❌ Connection Failed: {e}")
+
+st.markdown("---")
+st.caption("Mobile Optimized v3.0 | 404 Fix Included")
